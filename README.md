@@ -10,7 +10,7 @@ Add songs to multiple playlists at once, making playlist management more efficie
 ## Installation
 
 Install plugins directly from GitHub releases:
-- **Multiple Playlists**: `https://github.com/dantraynor/lunaplugins/releases/download/latest/luna.multipleplaylists`
+- **Multiple Playlists**: `https://github.com/dantraynor/lunaplugins/releases/download/latest/dantraynor.multipleplaylists`
 - **Plugin Store**: `https://github.com/dantraynor/lunaplugins/releases/download/latest/store.json`
 
 ## License
