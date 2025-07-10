@@ -4,7 +4,7 @@ A wip collection of plugins for **[Tidal Luna](https://github.com/Inrixia/TidaLu
 
 ## Plugins
 
-### 🎵 Multiple Playlists
+###  Multiple Playlists
 Add songs to multiple playlists at once, making playlist management more efficient.
 
 ## Installation
