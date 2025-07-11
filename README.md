@@ -1,6 +1,6 @@
 # Luna Plugins
 
-A wip collection of plugins for **[Tidal Luna](https://github.com/Inrixia/TidaLuna)** - enhancing your Tidal music experience.
+A wip collection of plugins for **[Tidal Luna](https://github.com/Inrixia/TidaLuna)**
 
 ## Plugins
 
