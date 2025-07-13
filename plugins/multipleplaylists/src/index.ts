@@ -201,12 +201,17 @@ async function addToSelectedPlaylists(song: MediaItem) {
             }
         }
 
-        // Show result notification
-        const message = errorCount === 0 
-            ? `"${songTitle}" added to ${successCount} playlist${successCount > 1 ? 's' : ''}`
-            : `"${songTitle}" added to ${successCount} playlist${successCount > 1 ? 's' : ''} (${errorCount} failed)`;
-        
-        showNotification(message, errorCount === 0 ? 'success' : 'warning');
+        // Show result notification (only show errors by default)
+        if (errorCount > 0) {
+            const message = successCount > 0 
+                ? `"${songTitle}" added to ${successCount} playlist${successCount > 1 ? 's' : ''} (${errorCount} failed)`
+                : `Failed to add "${songTitle}" to playlists`;
+            showNotification(message, 'error');
+        }
+        // Optionally show success notification (can be made configurable later)
+        // else {
+        //     showNotification(`"${songTitle}" added to ${successCount} playlist${successCount > 1 ? 's' : ''}`, 'success');
+        // }
 
     } catch (error) {
         trace.err("Error adding song to playlists:", error);
@@ -221,17 +226,18 @@ function showNotification(message: string, type: 'success' | 'warning' | 'error'
         position: fixed;
         top: 20px;
         right: 20px;
-        padding: 12px 16px;
-        border-radius: 6px;
+        padding: 8px 12px;
+        border-radius: 4px;
         color: white;
-        font-weight: 500;
+        font-size: 14px;
         z-index: 10001;
-        max-width: 300px;
+        max-width: 250px;
         word-wrap: break-word;
         background: ${type === 'success' ? '#4caf50' : type === 'warning' ? '#ff9800' : '#f44336'};
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        transform: translateX(400px);
-        transition: transform 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        transform: translateX(300px);
+        transition: transform 0.2s ease;
+        opacity: 0.9;
     `;
     notification.textContent = message;
 
@@ -240,23 +246,21 @@ function showNotification(message: string, type: 'success' | 'warning' | 'error'
     // Animate in
     setTimeout(() => {
         notification.style.transform = 'translateX(0)';
-    }, 100);
+    }, 50);
 
-    // Auto remove after 4 seconds
+    // Auto remove after 3 seconds (shorter duration)
     setTimeout(() => {
-        notification.style.transform = 'translateX(400px)';
+        notification.style.transform = 'translateX(300px)';
         setTimeout(() => {
             if (notification.parentNode) {
                 document.body.removeChild(notification);
             }
-        }, 300);
-    }, 4000);
+        }, 200);
+    }, 3000);
 }
 
 // Initialize plugin
 function init() {
-    trace.msg.log("Playlist Batch Add plugin initializing...");
-    
     // Add context menu integration
     setupContextMenuIntegration();
 }
@@ -279,11 +283,8 @@ function setupContextMenuIntegration() {
             if (contextMenuSongId) {
                 // Get the actual MediaItem instance for the right-clicked song
                 try {
-                    trace.msg.log(`Loading MediaItem for context menu song: ${contextMenuSongId}`);
                     const mediaItem = await MediaItem.fromId(contextMenuSongId, contextMenuContentType);
                     if (mediaItem) {
-                        const title = await mediaItem.title();
-                        trace.msg.log(`Loaded MediaItem: ${title}`);
                         await showPlaylistSelector(mediaItem);
                     } else {
                         showNotification('Could not load song information', 'error');
@@ -302,27 +303,22 @@ function setupContextMenuIntegration() {
     ContextMenu.onMediaItem(unloads, async ({ mediaCollection, contextMenu }) => {
         // Store the song ID from the context menu for later use
         try {
-            trace.msg.log("Context menu opened on media item, extracting song info...");
             // Handle different types of media collections
             if (mediaCollection && typeof mediaCollection === 'object') {
                 // For MediaItems collections, get the first MediaItem
                 if ('mediaItems' in mediaCollection && typeof mediaCollection.mediaItems === 'function') {
                     // This is an Album or Playlist
-                    trace.msg.log("Media collection is Album or Playlist");
                     const mediaItemsGenerator = await mediaCollection.mediaItems();
                     for await (const mediaItem of mediaItemsGenerator) {
                         contextMenuSongId = mediaItem.id;
                         contextMenuContentType = mediaItem.contentType;
-                        trace.msg.log(`Captured song ID from collection: ${contextMenuSongId}`);
                         break; // We only need the first one
                     }
                 } else {
                     // This might be MediaItems collection - try to iterate directly
-                    trace.msg.log("Media collection is MediaItems");
                     for await (const mediaItem of mediaCollection as any) {
                         contextMenuSongId = mediaItem.id;
                         contextMenuContentType = mediaItem.contentType;
-                        trace.msg.log(`Captured song ID directly: ${contextMenuSongId}`);
                         break; // We only need the first one
                     }
                 }
@@ -339,5 +335,3 @@ function setupContextMenuIntegration() {
 
 // Start the plugin
 init();
-
-trace.msg.log("Multiple Playlists plugin loaded successfully!");
