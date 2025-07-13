@@ -185,14 +185,13 @@ async function addToSelectedPlaylists(song: MediaItem) {
         // Add to each selected playlist
         for (const playlistId of selectedPlaylistIds) {
             try {
-                // Use the correct Redux action for adding items to playlist
-                redux.store.dispatch({
-                    type: 'content/ADD_MEDIA_ITEMS_TO_PLAYLIST',
-                    payload: {
-                        playlistUUID: playlistId,
-                        mediaItemIdsToAdd: [song.id],
-                        addToIndex: -1 // Add to end
-                    }
+                // Use the Redux action helper method instead of direct dispatch
+                redux.actions["content/ADD_MEDIA_ITEMS_TO_PLAYLIST"]({
+                    playlistUUID: playlistId,
+                    mediaItemIdsToAdd: [song.id],
+                    addToIndex: -1, // Add to end
+                    onDupes: "SKIP", // Skip if song already exists in playlist
+                    showNotification: false // Don't show internal notifications since we handle our own
                 });
                 successCount++;
             } catch (error) {
