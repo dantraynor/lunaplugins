@@ -1,5 +1,6 @@
 {
 	"name": "@dantraynor/multipleplaylists",
+	"version": "1.0.0",
 	"description": "Right-click on any song to see the \"Add to Multiple Playlists\" option.",
 	"author": {
 		"name": "dantraynor",

@@ -1,12 +1,17 @@
 import { LunaUnload, Tracer } from "@luna/core";
-import { MediaItem, redux, ContextMenu } from "@luna/lib";
+import { MediaItem, redux, ContextMenu, Playlist } from "@luna/lib";
 
 export const { trace, errSignal } = Tracer("[MultiplePlaylists]");
+// You typically will never manually set errSignal. Its handled when trace.err or similar is called
+errSignal!._ = "MultiplePlaylists plugin error signal";
+
+trace.msg.log(`MultiplePlaylists plugin loaded for ${redux.store.getState().user?.meta?.profileName || 'user'}`);
 
 // plugin settings
 export { Settings } from "./Settings.js";
 
 // Functions in unloads are called when plugin is unloaded.
+// Used to clean up resources, event listener dispose etc should be added here
 export const unloads = new Set<LunaUnload>();
 
 // Function to show playlist selector modal
@@ -121,8 +126,67 @@ async function showPlaylistSelector(song: MediaItem) {
     });
 }
 
-// Function to populate the playlist list
-function populatePlaylistList() {
+// Function to populate the playlist list using a safer approach
+async function populatePlaylistList() {
+    const playlistContainer = document.querySelector('#playlist-list');
+    if (!playlistContainer) return;
+
+    try {
+        // Try to use Playlist API methods if available (safer approach)
+        let playlistsArray: any[] = [];
+        
+        try {
+            // Check if there's a safer way to get current user playlists
+            if (typeof (Playlist as any).getUserPlaylists === 'function') {
+                playlistsArray = await (Playlist as any).getUserPlaylists();
+                trace.log("Successfully used Playlist.getUserPlaylists()");
+            } else if (typeof (Playlist as any).getMyPlaylists === 'function') {
+                playlistsArray = await (Playlist as any).getMyPlaylists();
+                trace.log("Successfully used Playlist.getMyPlaylists()");
+            } else {
+                // Fall back to Redux store with enhanced security filtering
+                trace.log("No safer playlist API found, using Redux store with security filtering");
+                return populatePlaylistListFromRedux();
+            }
+        } catch (error) {
+            trace.err("Error using Playlist API methods:", error);
+            // Fall back to Redux store with enhanced security filtering
+            return populatePlaylistListFromRedux();
+        }
+
+        if (playlistsArray.length === 0) {
+            playlistContainer.innerHTML = '<p style="opacity: 0.7;">No playlists found. Create some playlists first!</p>';
+            return;
+        }
+        
+        playlistContainer.innerHTML = playlistsArray
+            .map((playlist: any) => `
+                <label style="
+                    display: flex;
+                    align-items: center;
+                    padding: 8px;
+                    margin-bottom: 4px;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    transition: background 0.2s;
+                " onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                    <input type="checkbox" 
+                           data-playlist-id="${playlist.uuid || playlist.id}" 
+                           style="margin-right: 12px; cursor: pointer;">
+                    <div>
+                        <div style="font-weight: 500;">${playlist.title || playlist.name || 'Untitled Playlist'}</div>
+                        <div style="font-size: 12px; opacity: 0.7;">${playlist.numberOfTracks || playlist.trackCount || 0} tracks</div>
+                    </div>
+                </label>
+            `).join('');
+    } catch (error) {
+        trace.err("Error loading playlists:", error);
+        playlistContainer.innerHTML = '<p style="color: #ff6b6b;">Error loading playlists</p>';
+    }
+}
+
+// Fallback function to populate playlist list from Redux with enhanced security
+function populatePlaylistListFromRedux() {
     const playlistContainer = document.querySelector('#playlist-list');
     if (!playlistContainer) return;
 
@@ -136,9 +200,44 @@ function populatePlaylistList() {
             return;
         }
 
-        const playlistsArray = Object.values(playlists).filter((playlist: any) => 
-            playlist && playlist.type === 'USER'
-        );
+        // Get current user information from the proper location based on Luna patterns
+        const currentUser = state.user?.meta;
+        const currentUserId = currentUser?.id;
+        
+        trace.log("Current user ID for playlist filtering:", currentUserId);
+
+        const playlistsArray = Object.values(playlists).filter((playlist: any) => {
+            if (!playlist || playlist.type !== 'USER') {
+                return false;
+            }
+            
+            // If we can't determine the current user, this is a critical security issue
+            // In this case, we should not show any playlists to prevent data leakage
+            if (!currentUserId) {
+                trace.err("SECURITY WARNING: Cannot determine current user ID - not showing any playlists to prevent showing other users' playlists");
+                return false;
+            }
+            
+            // Check playlist ownership using the creator field (as seen in TidaLuna source)
+            const playlistCreatorId = playlist.creator?.id;
+            
+            // Only return playlists that belong to the current user
+            const isCurrentUserPlaylist = playlistCreatorId === currentUserId;
+            
+            if (!isCurrentUserPlaylist) {
+                trace.log(`Filtering out playlist "${playlist.title}" - creator ID: ${playlistCreatorId}, current user ID: ${currentUserId}`);
+            }
+            
+            return isCurrentUserPlaylist;
+        });
+        
+        // Additional security check: if we found playlists but none belong to current user,
+        // this suggests the filtering might not be working correctly
+        if (Object.keys(playlists).length > 0 && playlistsArray.length === 0 && currentUserId) {
+            trace.err("SECURITY WARNING: Found playlists in store but none match current user - possible data leakage prevention");
+            playlistContainer.innerHTML = '<p style="color: #ff6b6b;">Unable to load your playlists. Please try again.</p>';
+            return;
+        }
         
         playlistContainer.innerHTML = playlistsArray
             .map((playlist: any) => `
