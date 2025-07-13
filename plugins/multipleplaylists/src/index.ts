@@ -3,7 +3,6 @@ import { MediaItem, redux, ContextMenu, Playlist } from "@luna/lib";
 
 export const { trace, errSignal } = Tracer("[MultiplePlaylists]");
 // You typically will never manually set errSignal. Its handled when trace.err or similar is called
-errSignal!._ = "MultiplePlaylists plugin error signal";
 
 trace.msg.log(`MultiplePlaylists plugin loaded for ${redux.store.getState().user?.meta?.profileName || 'user'}`);
 
