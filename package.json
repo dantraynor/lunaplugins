@@ -1,6 +1,6 @@
 {
 	"name": "@dantraynor/lunaplugins",
-	"description": "my wip collection of plugins",
+	"description": "A collection of plugins for Tidal Luna",
 	"type": "module",
 	"scripts": {
 		"watch": "concurrently \"pnpm:build --watch\" pnpm:serve",
